@@ -1,0 +1,18 @@
+%module SampleGrammar 
+
+%import TempLexer
+
+%import Grammar
+
+%tokens [PlusT, VarT _, LBraceT, RBraceT]
+
+
+%grammar
+E -> E PlusT T          { Add $0 $2 }
+   | T                  { $0 }
+
+T -> LBraceT E RBraceT  { $1 }
+   | VarT               { Var $0 }
+
+
+

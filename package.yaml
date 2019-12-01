@@ -1,0 +1,65 @@
+name:                SLideR
+version:             0.1.0.0
+github:              "githubuser/SLideR"
+license:             BSD3
+author:              "Author name here"
+maintainer:          "example@example.com"
+copyright:           "2019 Author name here"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+- src/TempLexer.x
+- src/TemplateLexer.x
+- src/TemplateParser.y
+
+other-modules:
+- TempLexer
+- TemplateLexer
+- TemplateParser
+
+build-tools:
+- alex
+- happy
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/SLideR#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- array >= 0.4 && < 0.6
+- mtl >= 2.0 && < 2.3
+- containers >= 0.6 && < 0.7
+- Cabal >= 2.4
+library:
+  source-dirs: src
+
+executables:
+  SLideR-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -XPartialTypeSignatures
+    - -fno-warn-partial-type-signatures
+    dependencies:
+    - SLideR
+
+tests:
+  SLideR-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - SLideR
