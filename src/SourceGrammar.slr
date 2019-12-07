@@ -4,7 +4,11 @@
 
 %import Grammar
 
-%tokens [PlusT, VarT _, LBraceT, RBraceT]
+%tokens 
+PlusT   [+]
+VarT    [(a-A)+]
+LBraceT [(]
+RBraceT [)]
 
 
 %grammar

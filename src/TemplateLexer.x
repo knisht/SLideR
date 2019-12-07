@@ -9,15 +9,14 @@ $alpha      = [a-zA-Z]
 
 tokens :-
     $white+                             ;
-    "%module"                          { \_ -> ModuleDirectiveT }
-    "%import"                          { \_ -> ImportDirectiveT }
-    "%tokens"                          { \_ -> TokensDirectiveT }
-    "%grammar"                         { \_ -> GrammarDirectiveT }
+    "%module"                           { \_ -> ModuleDirectiveT }
+    "%import"                           { \_ -> ImportDirectiveT }
+    "%tokens"                           { \_ -> TokensDirectiveT }
+    "%grammar"                          { \_ -> GrammarDirectiveT }
     "_"                                 { \_ -> UnderscoreT }
     \{                                  { \_ -> CurlyLBraceT }
     \}                                  { \_ -> CurlyRBraceT }
-    \[                                  { \_ -> SquareLBraceT }
-    \]                                  { \_ -> SquareRBraceT }
+    \[(.+)?\]                           { \s -> RegexT s }
     \-\>                                { \_ -> ArrowT }
     \|                                  { \_ -> DelimiterT }
     \,                                  { \_ -> CommaT}
@@ -32,11 +31,10 @@ data Token = ModuleDirectiveT
            | UnderscoreT 
            | CurlyLBraceT
            | CurlyRBraceT
-           | SquareLBraceT
-           | SquareRBraceT
            | CommaT
            | ArrowT
            | DelimiterT
+           | RegexT String
            | RefT Int
            | IdentifierT String
            deriving Show

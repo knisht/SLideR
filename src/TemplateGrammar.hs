@@ -9,8 +9,7 @@ data Statement = ModuleStatement  String
                | GrammarStatement [RuleDefinition]
                deriving Show
 
-data Terminal = TokenTerminal String
-              | ArgumentTerminal String 
+data Terminal = Terminal String String
               deriving Show    
             
 data RuleDefinition = RuleDefinition String [RuleAction] deriving Show

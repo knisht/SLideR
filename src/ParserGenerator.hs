@@ -35,8 +35,10 @@ preimports :: String
 preimports = unlines ["{-# LANGUAGE PartialTypeSignatures #-}",
             "import Control.Monad.State.Strict",
             "import Data.Bifunctor",
+            "import System.IO.Unsafe",
+            "import Debug",
             "\n\n\n",
-            "type SLRState = State ([Int], [Token])"]
+            "type SLRState = State ([Int], [(String, String)])"]
 
 extractModuleStatement :: [Statement] -> [Statement]
 extractModuleStatement = mapMaybe (\s -> case s of 

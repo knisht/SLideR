@@ -20,8 +20,7 @@ import TemplateGrammar
     UNDERSCORE  { UnderscoreT       }
     CLBRACE     { CurlyLBraceT      }
     CRBRACE     { CurlyRBraceT      }
-    SLBRACE     { SquareLBraceT     }
-    SRBRACE     { SquareRBraceT     }
+    REGEX       { RegexT $$         }
     ARROW       { ArrowT            }
     DELIMITER   { DelimiterT        }
     COMMA       { CommaT            }
