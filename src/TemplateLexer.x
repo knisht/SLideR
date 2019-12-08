@@ -13,15 +13,14 @@ tokens :-
     "%import"                           { \_ -> ImportDirectiveT }
     "%tokens"                           { \_ -> TokensDirectiveT }
     "%grammar"                          { \_ -> GrammarDirectiveT }
-    "_"                                 { \_ -> UnderscoreT }
     \{                                  { \_ -> CurlyLBraceT }
     \}                                  { \_ -> CurlyRBraceT }
-    \[(.+)?\]                           { \s -> RegexT s }
     \-\>                                { \_ -> ArrowT }
     \|                                  { \_ -> DelimiterT }
     \,                                  { \_ -> CommaT}
     \$ [$digit]+                        { \s -> RefT $ read (tail s) }                 
-    $alpha [$alpha $digit]*             { \s -> IdentifierT s }
+    [$alpha \_] [$alpha $digit]*             { \s -> IdentifierT s }
+    \"(.+)?\"\n                         { \s -> RegexT s }
 {
 
 data Token = ModuleDirectiveT 

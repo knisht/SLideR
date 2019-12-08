@@ -17,13 +17,11 @@ import TemplateGrammar
     GRAMMARDIR  { GrammarDirectiveT }
     REF         { RefT $$           }
     IDENTIFIER  { IdentifierT $$    }
-    UNDERSCORE  { UnderscoreT       }
     CLBRACE     { CurlyLBraceT      }
     CRBRACE     { CurlyRBraceT      }
     REGEX       { RegexT $$         }
     ARROW       { ArrowT            }
     DELIMITER   { DelimiterT        }
-    COMMA       { CommaT            }
     
 
 
@@ -43,15 +41,11 @@ Statement
     | GRAMMARDIR GrammarList { GrammarStatement $2}
 
 TerminalList 
-    : SLBRACE TerminalEnumeration SRBRACE   { $2 }
-
-TerminalEnumeration
-    : Terminal  { [$1] }
-    | TerminalEnumeration COMMA Terminal { $1 ++ [$3] }
+    : Terminal { [$1] }
+    | TerminalList Terminal {$1 ++ [$2]}
 
 Terminal 
-    : IDENTIFIER            { TokenTerminal $1 }
-    | IDENTIFIER UNDERSCORE { ArgumentTerminal $1 }
+    : IDENTIFIER REGEX       { Terminal $1 $2 }
     
 GrammarList
     : RuleDefinition                 { [$1] }

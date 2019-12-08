@@ -1,14 +1,13 @@
 %module SampleGrammar 
 
-%import TempLexer
-
 %import Grammar
 
 %tokens 
-PlusT   [+]
-VarT    [(a-A)+]
-LBraceT [(]
-RBraceT [)]
+_         " |\n"
+PlusT     "\+"
+VarT      "[a-z]+"
+LBraceT   "\("
+RBraceT   "\)"
 
 
 %grammar

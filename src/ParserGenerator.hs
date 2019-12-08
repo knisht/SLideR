@@ -7,6 +7,7 @@ import Data.Maybe
 import TemplateGrammar
 import DFA
 import Control.Monad
+import LexerGenerator
 
 str = "%module Sample"
 
@@ -27,8 +28,9 @@ processStatements list =
       header = generateModuleHeader moduleStatement
       imports = generateImportHeader importStatements >>= (++"\n")
       properGrammar = extractProperGrammar grammarStatement
+      lexer = generateLexer properTokens
       body = buildDFA properTokens properGrammar 
-  in header ++ "\n\n\n" ++ imports ++ preimports ++ "\n\n\n" ++ body
+  in header ++ "\n\n\n" ++ imports ++ preimports ++ "\n\n\n" ++ lexer ++ "\n\n\n" ++ body
 
 
 preimports :: String
@@ -36,6 +38,8 @@ preimports = unlines ["{-# LANGUAGE PartialTypeSignatures #-}",
             "import Control.Monad.State.Strict",
             "import Data.Bifunctor",
             "import System.IO.Unsafe",
+            "import Control.Applicative",
+            "import Text.Regex",
             "import Debug",
             "\n\n\n",
             "type SLRState = State ([Int], [(String, String)])"]

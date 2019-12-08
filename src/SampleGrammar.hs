@@ -1,18 +1,73 @@
 module SampleGrammar where
 
 
-import TempLexer
 import Grammar
 {-# LANGUAGE PartialTypeSignatures #-}
 import Control.Monad.State.Strict
 import Data.Bifunctor
 import System.IO.Unsafe
+import Control.Applicative
+import Text.Regex
 import Debug
 
 
 
 
 type SLRState = State ([Int], [(String, String)])
+
+
+
+slrLexer :: String -> [(String, String)]
+slrLexer s = case compositeLexer s of
+  Nothing -> []
+  Just (name, parsed, remained) -> if name == "_" then slrLexer remained else (name, parsed) : slrLexer remained
+
+
+compositeLexer s = lex_ s <|> lexPlusT s <|> lexVarT s <|> lexLBraceT s <|> lexRBraceT s
+
+lex_ :: String -> Maybe (String, String, String)
+lex_ s = 
+  let regex = mkRegex "^ |\\n"
+      splitted = splitRegex regex s in
+  case splitted of
+    [a, b] -> Just ("_", take (length s - length b) s, b)
+    _ -> Nothing
+
+
+lexPlusT :: String -> Maybe (String, String, String)
+lexPlusT s = 
+  let regex = mkRegex "^\\+"
+      splitted = splitRegex regex s in
+  case splitted of
+    [a, b] -> Just ("PlusT", take (length s - length b) s, b)
+    _ -> Nothing
+
+
+lexVarT :: String -> Maybe (String, String, String)
+lexVarT s = 
+  let regex = mkRegex "^[a-z]+"
+      splitted = splitRegex regex s in
+  case splitted of
+    [a, b] -> Just ("VarT", take (length s - length b) s, b)
+    _ -> Nothing
+
+
+lexLBraceT :: String -> Maybe (String, String, String)
+lexLBraceT s = 
+  let regex = mkRegex "^\\("
+      splitted = splitRegex regex s in
+  case splitted of
+    [a, b] -> Just ("LBraceT", take (length s - length b) s, b)
+    _ -> Nothing
+
+
+lexRBraceT :: String -> Maybe (String, String, String)
+lexRBraceT s = 
+  let regex = mkRegex "^\\)"
+      splitted = splitRegex regex s in
+  case splitted of
+    [a, b] -> Just ("RBraceT", take (length s - length b) s, b)
+    _ -> Nothing
 
 
 
@@ -185,4 +240,3 @@ slrUnit_8 = do
       slrStateStackPop
       slrTokenStackPush ("T", "UNDEFINED")
       return (\[t2, t1, t0] -> NontermValue3 $ (getNValue1 t1) , 3)
-
