@@ -24,12 +24,13 @@ processStatements list =
       importStatements = extractImportStatements list
       tokensStatement = extractTokensStatement list
       grammarStatement = extractGrammarStatements list
+      attributes = extractAttributes list
       properTokens = extractProperTokens tokensStatement
       header = generateModuleHeader moduleStatement
       imports = generateImportHeader importStatements >>= (++"\n")
       properGrammar = extractProperGrammar grammarStatement
       lexer = generateLexer properTokens
-      body = buildDFA properTokens properGrammar 
+      body = buildDFA attributes properGrammar 
   in header ++ "\n\n\n" ++ imports ++ preimports ++ "\n\n\n" ++ lexer ++ "\n\n\n" ++ body
 
 
@@ -81,5 +82,9 @@ generateImportHeader :: [Statement] -> [String]
 generateImportHeader = fmap (\(ImportStatement s) -> "import " ++ s)
 
 
-
+extractAttributes :: [Statement] -> [String]
+extractAttributes [] = []
+extractAttributes (e : tail) = case e of
+    AttributesStatement list -> list ++ extractAttributes tail
+    _ -> extractAttributes tail
 

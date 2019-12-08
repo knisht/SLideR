@@ -13,28 +13,31 @@ tokens :-
     "%import"                           { \_ -> ImportDirectiveT }
     "%tokens"                           { \_ -> TokensDirectiveT }
     "%grammar"                          { \_ -> GrammarDirectiveT }
-    \{                                  { \_ -> CurlyLBraceT }
-    \}                                  { \_ -> CurlyRBraceT }
+    "%attributes"                       { \_ -> AttributesDirectiveT }
     \-\>                                { \_ -> ArrowT }
     \|                                  { \_ -> DelimiterT }
     \,                                  { \_ -> CommaT}
-    \$ [$digit]+                        { \s -> RefT $ read (tail s) }                 
-    [$alpha \_] [$alpha $digit]*             { \s -> IdentifierT s }
-    \"(.+)?\"\n                         { \s -> RegexT s }
+    [$alpha \_] [$alpha $digit]*        { \s -> IdentifierT s }
+    \[                                  { \_ -> AttrLBraceT }
+    \]                                  { \_ -> AttrRBraceT }
+    =                                   { \_ -> EqSignT }
+    \{ ([^\}]+) \}                      { \s -> CodeBlockT s}
+    \"(.+)\"\n                         { \s -> RegexT s }
 {
 
 data Token = ModuleDirectiveT 
            | ImportDirectiveT
            | TokensDirectiveT
            | GrammarDirectiveT 
-           | UnderscoreT 
-           | CurlyLBraceT
-           | CurlyRBraceT
+           | AttributesDirectiveT
            | CommaT
+           | AttrLBraceT
+           | AttrRBraceT
            | ArrowT
+           | EqSignT
            | DelimiterT
+           | CodeBlockT String
            | RegexT String
-           | RefT Int
            | IdentifierT String
            deriving Show
 }

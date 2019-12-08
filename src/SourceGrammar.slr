@@ -6,20 +6,24 @@
 _         " |\n"
 PlusT     "\+"
 MultT     "\*"
-VarT      "[a-z]+"
+VarT      "[0-9]+"
 LBraceT   "\("
 RBraceT   "\)"
 
+%attributes
+value
+repr
+
 
 %grammar
-E -> E PlusT T          { Add $0 $2 }
-   | T                  { $0 }
+E -> E PlusT T          [value = {$0.value + $2.value}, repr = {$0.repr}]   
+   | T                  [value = {$0.value}, repr = {$0.repr}]              
 
-T -> T MultT F          { Mult $0 $2 }
-   | F                  { $0 }
+T -> T MultT F          [value = {$0.value * $2.value}, repr = {$0.repr}]   
+   | F                  [value = {$0.value}, repr = {$0.repr}]                      
 
-F -> LBraceT E RBraceT  { $1 }
-   | VarT               { Var $0 }
+F -> LBraceT E RBraceT  [value = {$1.value}, repr = {$1.repr}]      
+   | VarT               [value = {(read $0) :: Int}, repr = {$0}]           
 
 
 

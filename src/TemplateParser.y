@@ -15,14 +15,16 @@ import TemplateGrammar
     IMPORTDIR   { ImportDirectiveT  }
     TOKENSDIR   { TokensDirectiveT  }
     GRAMMARDIR  { GrammarDirectiveT }
-    REF         { RefT $$           }
+    ATTRIBUTESDIR { AttributesDirectiveT }
     IDENTIFIER  { IdentifierT $$    }
-    CLBRACE     { CurlyLBraceT      }
-    CRBRACE     { CurlyRBraceT      }
+    CODEBLOCK   { CodeBlockT $$     } 
     REGEX       { RegexT $$         }
+    COMMA       { CommaT            }
     ARROW       { ArrowT            }
     DELIMITER   { DelimiterT        }
-    
+    ATTRLBRACE  { AttrLBraceT       }
+    ATTRRBRACE  { AttrRBraceT       }
+    EQSIGN      { EqSignT           }
 
 
 %%
@@ -39,6 +41,12 @@ Statement
     | IMPORTDIR IDENTIFIER   { ImportStatement $2 }
     | TOKENSDIR TerminalList { TokensStatement $2 }
     | GRAMMARDIR GrammarList { GrammarStatement $2}
+    | ATTRIBUTESDIR AttributesList { AttributesStatement $2}
+
+
+AttributesList
+    : IDENTIFIER { [$1] }
+    | AttributesList IDENTIFIER { $1 ++ [$2] }
 
 TerminalList 
     : Terminal { [$1] }
@@ -59,19 +67,18 @@ RuleList
     | {- empty -}          { [] }
 
 RuleAction 
-    : CaseList CLBRACE ActionList CRBRACE  { RuleAction $1 $3 }
+    : CaseList ATTRLBRACE ActionList ATTRRBRACE  { RuleAction $1 $3 }
 
 CaseList 
     : CaseList IDENTIFIER { $1 ++ [$2] }
     | {- empty -}       { [] }
 
 ActionList
-    : ActionList NameOrRef {$1 ++ [$2]}
-    | {-empty-}     { [] }
+    : Assign                { [$1] }
+    | ActionList COMMA Assign     {$1 ++ [$3]}
 
-NameOrRef
-    : IDENTIFIER    {Name $1}
-    | REF           {Ref $1}
+Assign
+    : IDENTIFIER EQSIGN CODEBLOCK  { Assign $1 $3 }
 
 {
 parseError = fail "ParseError"

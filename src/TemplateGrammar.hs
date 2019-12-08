@@ -7,6 +7,7 @@ data Statement = ModuleStatement  String
                | ImportStatement  String
                | TokensStatement  [Terminal]
                | GrammarStatement [RuleDefinition]
+               | AttributesStatement [String]
                deriving Show
 
 data Terminal = Terminal String String
@@ -14,9 +15,8 @@ data Terminal = Terminal String String
             
 data RuleDefinition = RuleDefinition String [RuleAction] deriving Show
 
-data RuleAction = RuleAction [String] [NameOrRef] deriving Show
+data RuleAction = RuleAction [String] [Assign] deriving Show
 
-data NameOrRef = Name String
-               | Ref Int
-               deriving Show
+data Assign = Assign String String
+             deriving Show
 

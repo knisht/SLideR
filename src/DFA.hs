@@ -9,13 +9,14 @@ import Data.Set as Set
 import Control.Monad.State.Strict
 import Data.Map.Strict as Map
 import Data.Maybe
+import Text.Regex
 import Data.Bifunctor
 import Data.List as List
 import Data.Maybe as Maybe
 import Debug
 
 type IndexedState = (String, [String], [String])
-type RuleMap = Map String [([String], [NameOrRef])]
+type RuleMap = Map String [([String], [Assign])]
 type Config = [IndexedState]
 type Context a = State RuleMap a
 type ConfigurationMap = Map Int Config 
@@ -25,6 +26,7 @@ type TransitionMap = Map (Int, TransitionType) Int
 type DFAContext a = State (TransitionMap, ConfigurationMap, RuleMap) a
 type FollowMap = Map String (Set (Maybe String))
 type FirstMap = Map String (Set String)
+type Attributes = [String]
 
 
 infixr 9 ∘
@@ -33,20 +35,22 @@ infixr 9 ∘
 
 isDebugMode = False 
 
-buildDFA :: [Terminal] -> [RuleDefinition] -> String
-buildDFA terminals ruleDefs = 
+buildDFA :: [String] -> [RuleDefinition] -> String
+buildDFA attributes ruleDefs = 
   let (RuleDefinition oldInitial _) = head ruleDefs
-      initial = RuleDefinition generateNewInitialState [RuleAction [oldInitial] [Ref 0]]
+      dummyAssign = (\s -> Assign s ("$0." ++ s)) <$> attributes
+      initial = RuleDefinition generateNewInitialState [RuleAction [oldInitial] (dummyAssign)]
       newList = initial : ruleDefs
       nonterminals = collectNonterminals (initial : ruleDefs)
       ruleMap = {-Map.insert generateNewInitialState [[oldInitial]] $-} buildRuleMap newList
       typeContainer = generateTypeContainer (length newList)
       followMap = buildFollowMap ruleMap
       typeGetters = generateTypeGetters (length newList)
+      attrGetters = generateAttrGetters attributes
       (transits, configs, rules) = execState (buildCompleteTransitionTable initial) (Map.empty, Map.empty, ruleMap)
-      functions = generateFunctions followMap transits configs rules 
+      functions = generateFunctions attributes followMap transits configs rules 
       mainEval = mainEvaluator oldInitial ruleMap
-  in intercalate "\n\n\n" (mainEval : typeContainer : typeGetters : functions)
+  in intercalate "\n\n\n" (mainEval : typeContainer : typeGetters : attrGetters : functions)
 
 
 mainEvaluator :: String -> RuleMap -> String
@@ -63,6 +67,17 @@ generateTypeContainer number = intercalate "\n" $
    "  | TokenValue String" : 
    ((\i -> "  | NontermValue" ++ show i ++ " t" ++ show i) <$> [1..number]) ++ ["  deriving Show"])
 
+
+generateAttrGetters :: Attributes -> String
+generateAttrGetters attrs = intercalate "\n\n" $ generateAttrGetter (length attrs) <$> zip attrs [0..]
+
+generateAttrGetter :: Int -> (String, Int) -> String
+generateAttrGetter maxargs (name, ind) = "getAttr_" ++ name ++ " (" ++ intercalate ", " (renderArgs maxargs ind) ++ ") = t"
+  
+renderArgs :: Int -> Int -> [String]
+renderArgs 0 _ = []
+renderArgs i 0 = "t" : renderArgs (i-1) (-1)
+renderArgs i j = "_" : renderArgs (i-1) (j-1)
 
 generateTypeGetters :: Int -> String
 generateTypeGetters number = 
@@ -317,8 +332,8 @@ buildRuleMap :: [RuleDefinition] -> RuleMap
 buildRuleMap = Map.fromList . (fmap (\(RuleDefinition s acts) -> (s, (\(RuleAction a code) -> (a, code)) <$> acts)))
 
 
-generateFunctions :: FollowMap -> TransitionMap -> ConfigurationMap -> RuleMap -> [String]
-generateFunctions followMap transitions configs rules = 
+generateFunctions :: Attributes -> FollowMap -> TransitionMap -> ConfigurationMap -> RuleMap -> [String]
+generateFunctions attributes followMap transitions configs rules = 
   let possibleWays = (\((a, b), c) -> (a, b, c)) <$> Map.toList transitions
       splitted = groupBy (\(a, _, _) (b, _, _) -> a == b) possibleWays
       stateNumber = length $ keys configs 
@@ -331,7 +346,7 @@ generateFunctions followMap transitions configs rules =
   slrTokenStackPushDefinition : 
   slrStateStackPushDefinition :
   slrStateStackPopDefinition : 
-  (fmap (renderFunctionDef rules configs followMap) splitted)
+  (fmap (renderFunctionDef attributes rules configs followMap) splitted)
 
 
 tripleFst :: (a, b, c) -> a
@@ -342,8 +357,8 @@ isReduce t = case t of
   Reduce _ -> True
   _ -> False
 
-renderFunctionDef :: RuleMap -> ConfigurationMap -> FollowMap -> [(Int, TransitionType, Int)] -> String
-renderFunctionDef rules configs followMap list =
+renderFunctionDef :: Attributes -> RuleMap -> ConfigurationMap -> FollowMap -> [(Int, TransitionType, Int)] -> String
+renderFunctionDef attributes rules configs followMap list =
   let (nameInd, _, _) = head list
       functionName = "slrUnit_" ++ show nameInd 
       mainRuleName = (tripleFst $ head $ configs Map.! nameInd)
@@ -355,18 +370,18 @@ renderFunctionDef rules configs followMap list =
       debugPrefix = if isDebugMode then ("  yield " ++ show nameInd ++ " ") else ""
       caseHeader = "  case pair of"
       helperName = "slrReduceHelper_" ++ show nameInd
-      caseStatements = (\(ruleInd, t, i) -> generateCaseStatement helperName followMap listedNonterminals rules ruleInd exactRules t i) <$> list
+      caseStatements = (\(ruleInd, t, i) -> generateCaseStatement attributes helperName followMap listedNonterminals rules ruleInd exactRules t i) <$> list
       helperDefinition = fromMaybe "" $ safeHead $ List.filter ((/=) "") $ snd <$> caseStatements
   in intercalate "\n" ([functionHeader, bodyPrefix, debugPrefix, caseHeader] ++ (fst <$> caseStatements)) ++ "\n\n" ++ helperDefinition 
 
 
-generateCaseStatement :: String -> FollowMap -> [String] -> RuleMap -> Int -> [[String]] -> TransitionType -> Int -> (String, String)
-generateCaseStatement helperName follows nontermList ruleMap ruleIndex rules ttype target = case ttype of
+generateCaseStatement :: Attributes -> String -> FollowMap -> [String] -> RuleMap -> Int -> [[String]] -> TransitionType -> Int -> (String, String)
+generateCaseStatement attributes helperName follows nontermList ruleMap ruleIndex rules ttype target = case ttype of
   Shift s -> renderShiftTransition ruleMap s target
   Reduce t -> if ruleIndex == 1 
                 then ("    Nothing -> return (\\[] -> Success, 0)", "") 
                 else let fullRule = (ruleMap Map.! t) !! target in
-                    renderReduceTransition helperName follows nontermList t fullRule
+                    renderReduceTransition attributes helperName follows nontermList t fullRule
 
 findIndexList :: Eq a => [a] -> a -> Maybe Int
 findIndexList list elem = snd <$> (safeHead $ List.filter (\(a, _) -> a == elem) $ zip list ([1..] :: [Int]))
@@ -377,9 +392,9 @@ renderShiftTransition rules s target = let index = if s `Map.member` rules then 
   ("    Just (" ++ show s ++ ", val) -> do slrStateStackPush " ++ show target ++ "; return (\\[] -> TokenValue val, " ++ show index ++ ")", "")
 
 
-renderReduceTransition :: String -> FollowMap -> [String] -> String -> ([String], [NameOrRef]) -> (String, String)
-renderReduceTransition helperName follows nonterminals nonterminalName (grammar, code) = 
-  let reducingHelper = renderReducingBody helperName nonterminals nonterminalName (grammar, code) 
+renderReduceTransition :: Attributes -> String -> FollowMap -> [String] -> String -> ([String], [Assign]) -> (String, String)
+renderReduceTransition attributes helperName follows nonterminals nonterminalName (grammar, code) = 
+  let reducingHelper = renderReducingBody attributes helperName nonterminals nonterminalName (grammar, code) 
       followSet = Set.toList $ follows Map.! nonterminalName 
       gotos = intercalate "\n" $ (\s -> "    " ++ redraw s ++ " -> " ++ helperName ++ " pair") <$> followSet in
   (gotos, reducingHelper)
@@ -390,8 +405,8 @@ redraw e = case e of
   Just s -> "Just (" ++ show s ++ ", _)"
   Nothing -> "Nothing" 
 
-renderReducingBody :: String -> [String] -> String -> ([String], [NameOrRef]) -> String 
-renderReducingBody helperName nonterminals nonterminalName (grammar, code) = 
+renderReducingBody :: Attributes -> String -> [String] -> String -> ([String], [Assign]) -> String 
+renderReducingBody attributes helperName nonterminals nonterminalName (grammar, code) = 
   let len = List.length $ grammar
       arguments = "[" ++ (intercalate ", " $ (\i -> "t" ++ show (len - 1 - i)) <$> [0..len-1]) ++ "]"
       mainIndex = fromJust $ findIndexList nonterminals nonterminalName in
@@ -399,14 +414,35 @@ renderReducingBody helperName nonterminals nonterminalName (grammar, code) =
   "  restoreTokenStack pair\n" ++
   generateStackReduce len ++ 
   "\n  slrTokenStackPush (" ++ show nonterminalName ++ ", \"UNDEFINED\")" ++
-  "\n  return (\\" ++ arguments ++ " -> NontermValue" ++ show mainIndex ++ " $ " ++ createCode code grammar nonterminals ++ ", " ++ show len ++ ")"
+  "\n  return (\\" ++ arguments ++ " -> NontermValue" ++ show mainIndex ++ " (" ++ createCode attributes code grammar nonterminals ++ "), " ++ show len ++ ")"
 
 
-createCode :: [NameOrRef] -> [String] -> [String] -> String
-createCode [] _ _ = ""
-createCode (s : tail) grammar nonterminals = case s of
-  Name a -> a ++ (' ' : createCode tail grammar nonterminals )
-  Ref  i -> "(" ++ renderGetter i grammar nonterminals ++" t" ++ show i ++ ")" ++ (' ' : createCode tail grammar nonterminals) 
+createCode :: Attributes -> [Assign] -> [String] -> [String] -> String
+createCode attributes assigns grammar nonterminals = 
+  let codes = (\a -> createSingleCode attributes a grammar nonterminals) <$> assigns
+      numbers = (\(Assign name _) -> findIndexList attributes name) <$> assigns
+      zipped = zip codes numbers
+      sorted = fst <$> sortOn snd zipped in
+  "(" ++ intercalate ", " sorted ++ ")"
+
+
+createSingleCode :: Attributes -> Assign -> [String] -> [String] -> String
+createSingleCode attributes (Assign _ code) grammar nonterminals =
+  let regexProducer i = mkRegex $ "\\$" ++ show i ++ "\\.(\\w+)?\\b"
+      substProducer i = "(" ++ renderGetter i grammar nonterminals ++ " t" ++ show i ++ ")"
+      substs = join $ (\i -> generateSubstitutors i attributes grammar nonterminals) <$> [0..length grammar -1] 
+      trueCode = tail $ List.take (length code - 1) code in
+  List.foldr (\(regex, subst) str -> subRegex regex str subst) trueCode substs
+
+
+generateSubstitutors :: Int -> Attributes -> [String] -> [String] -> [(Regex, String)]
+generateSubstitutors ind attributes grammar nonterminals =
+  let typeGetter = "(" ++ renderGetter ind grammar nonterminals ++ " t" ++ show ind ++ ")"
+      valueGetter s = "(getAttr_" ++ s ++ " " ++ typeGetter ++ ")" 
+      regexBase = "\\$" ++ show ind in
+  (mkRegex $ "\\$" ++ show ind, typeGetter) : 
+  ((\s -> (mkRegex $ regexBase ++ "\\." ++ s, valueGetter s)) <$> attributes)       
+
 
 renderGetter :: Int -> [String] -> [String] -> String
 renderGetter ind grammar nonterminals = 

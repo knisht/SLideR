@@ -54,7 +54,7 @@ lexMultT s =
 
 lexVarT :: String -> Maybe (String, String, String)
 lexVarT s = 
-  let regex = mkRegex "^[a-z]+"
+  let regex = mkRegex "^[0-9]+"
       splitted = splitRegex regex s in
   case splitted of
     [a, b] -> Just ("VarT", take (length s - length b) s, b)
@@ -98,6 +98,11 @@ getNValue2 (NontermValue2 a) = a
 getNValue3 (NontermValue3 a) = a
 getNValue4 (NontermValue4 a) = a
 getTokenValue (TokenValue s) = s
+
+
+getAttr_value (t, _) = t
+
+getAttr_repr (_, t) = t
 
 
 isSuccess e = case e of
@@ -202,7 +207,7 @@ slrReduceHelper_2 pair = do
   restoreTokenStack pair
   slrStateStackPop
   slrTokenStackPush ("E", "UNDEFINED")
-  return (\[t0] -> NontermValue1 $ (getNValue4 t0) , 1)
+  return (\[t0] -> NontermValue1 (((getAttr_value (getNValue4 t0)), (getAttr_repr (getNValue4 t0)))), 1)
 
 
 slrUnit_3 = do
@@ -218,7 +223,7 @@ slrReduceHelper_3 pair = do
   restoreTokenStack pair
   slrStateStackPop
   slrTokenStackPush ("T", "UNDEFINED")
-  return (\[t0] -> NontermValue4 $ (getNValue2 t0) , 1)
+  return (\[t0] -> NontermValue4 (((getAttr_value (getNValue2 t0)), (getAttr_repr (getNValue2 t0)))), 1)
 
 
 slrUnit_4 = do
@@ -247,7 +252,7 @@ slrReduceHelper_5 pair = do
   restoreTokenStack pair
   slrStateStackPop
   slrTokenStackPush ("F", "UNDEFINED")
-  return (\[t0] -> NontermValue2 $ Var (getTokenValue t0) , 1)
+  return (\[t0] -> NontermValue2 (((read (getTokenValue t0)) :: Int, (getTokenValue t0))), 1)
 
 
 slrUnit_6 = do
@@ -277,7 +282,7 @@ slrReduceHelper_7 pair = do
   slrStateStackPop
   slrStateStackPop
   slrTokenStackPush ("E", "UNDEFINED")
-  return (\[t2, t1, t0] -> NontermValue1 $ Add (getNValue1 t0) (getNValue4 t2) , 3)
+  return (\[t2, t1, t0] -> NontermValue1 (((getAttr_value (getNValue1 t0)) + (getAttr_value (getNValue4 t2)), (getAttr_repr (getNValue1 t0)))), 3)
 
 
 slrUnit_8 = do
@@ -306,7 +311,7 @@ slrReduceHelper_9 pair = do
   slrStateStackPop
   slrStateStackPop
   slrTokenStackPush ("T", "UNDEFINED")
-  return (\[t2, t1, t0] -> NontermValue4 $ Mult (getNValue4 t0) (getNValue2 t2) , 3)
+  return (\[t2, t1, t0] -> NontermValue4 (((getAttr_value (getNValue4 t0)) * (getAttr_value (getNValue2 t2)), (getAttr_repr (getNValue4 t0)))), 3)
 
 
 slrUnit_10 = do
@@ -334,5 +339,5 @@ slrReduceHelper_11 pair = do
   slrStateStackPop
   slrStateStackPop
   slrTokenStackPush ("F", "UNDEFINED")
-  return (\[t2, t1, t0] -> NontermValue2 $ (getNValue1 t1) , 3)
+  return (\[t2, t1, t0] -> NontermValue2 (((getAttr_value (getNValue1 t1)), (getAttr_repr (getNValue1 t1)))), 3)
 
