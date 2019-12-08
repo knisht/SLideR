@@ -5,6 +5,7 @@
 %tokens 
 _         " |\n"
 PlusT     "\+"
+MultT     "\*"
 VarT      "[a-z]+"
 LBraceT   "\("
 RBraceT   "\)"
@@ -14,7 +15,10 @@ RBraceT   "\)"
 E -> E PlusT T          { Add $0 $2 }
    | T                  { $0 }
 
-T -> LBraceT E RBraceT  { $1 }
+T -> T MultT F          { Mult $0 $2 }
+   | F                  { $0 }
+
+F -> LBraceT E RBraceT  { $1 }
    | VarT               { Var $0 }
 
 

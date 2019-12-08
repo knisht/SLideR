@@ -23,7 +23,7 @@ slrLexer s = case compositeLexer s of
   Just (name, parsed, remained) -> if name == "_" then slrLexer remained else (name, parsed) : slrLexer remained
 
 
-compositeLexer s = lex_ s <|> lexPlusT s <|> lexVarT s <|> lexLBraceT s <|> lexRBraceT s
+compositeLexer s = lex_ s <|> lexPlusT s <|> lexMultT s <|> lexVarT s <|> lexLBraceT s <|> lexRBraceT s
 
 lex_ :: String -> Maybe (String, String, String)
 lex_ s = 
@@ -40,6 +40,15 @@ lexPlusT s =
       splitted = splitRegex regex s in
   case splitted of
     [a, b] -> Just ("PlusT", take (length s - length b) s, b)
+    _ -> Nothing
+
+
+lexMultT :: String -> Maybe (String, String, String)
+lexMultT s = 
+  let regex = mkRegex "^\\*"
+      splitted = splitRegex regex s in
+  case splitted of
+    [a, b] -> Just ("MultT", take (length s - length b) s, b)
     _ -> Nothing
 
 
@@ -71,18 +80,23 @@ lexRBraceT s =
 
 
 
-data ValueContainer t1 t2 t3 = Dummy
+mainEvaluator input = getNValue1 $ head $ evalState (slrDispatcher []) ([0], slrLexer input)
+
+
+data ValueContainer t1 t2 t3 t4 = Dummy
   | Success
   | TokenValue String
   | NontermValue1 t1
   | NontermValue2 t2
   | NontermValue3 t3
+  | NontermValue4 t4
   deriving Show
 
 
 getNValue1 (NontermValue1 a) = a
 getNValue2 (NontermValue2 a) = a
 getNValue3 (NontermValue3 a) = a
+getNValue4 (NontermValue4 a) = a
 getTokenValue (TokenValue s) = s
 
 
@@ -114,6 +128,9 @@ slrDispatcher valueStack = do
     6 -> slrUnit_6
     7 -> slrUnit_7
     8 -> slrUnit_8
+    9 -> slrUnit_9
+    10 -> slrUnit_10
+    11 -> slrUnit_11
   let (top, tail) = splitAt numToPop valueStack
   if numToPop == -1 then slrDispatcher valueStack else do
     let newValue = (producer top)
@@ -151,92 +168,171 @@ slrStateStackPop = do
 
 slrUnit_0 = do
   pair <- slrTokenStackPop
-  yield 0 
+
   case pair of
     Just ("E", val) -> do slrStateStackPush 1; return (\[] -> TokenValue val, -1)
-    Just ("LBraceT", val) -> do slrStateStackPush 3; return (\[] -> TokenValue val, 0)
+    Just ("F", val) -> do slrStateStackPush 3; return (\[] -> TokenValue val, -1)
+    Just ("LBraceT", val) -> do slrStateStackPush 4; return (\[] -> TokenValue val, 0)
     Just ("T", val) -> do slrStateStackPush 2; return (\[] -> TokenValue val, -1)
-    Just ("VarT", val) -> do slrStateStackPush 4; return (\[] -> TokenValue val, 0)
+    Just ("VarT", val) -> do slrStateStackPush 5; return (\[] -> TokenValue val, 0)
+
+
 
 
 slrUnit_1 = do
   pair <- slrTokenStackPop
-  yield 1 
+
   case pair of
-    Just ("PlusT", val) -> do slrStateStackPush 5; return (\[] -> TokenValue val, 0)
+    Just ("PlusT", val) -> do slrStateStackPush 6; return (\[] -> TokenValue val, 0)
     Nothing -> return (\[] -> Success, 0)
+
+
 
 
 slrUnit_2 = do
   pair <- slrTokenStackPop
-  yield 2 
+
   case pair of
-    _ -> do 
-      restoreTokenStack pair
-      slrStateStackPop
-      slrTokenStackPush ("E", "UNDEFINED")
-      return (\[t0] -> NontermValue1 $ (getNValue3 t0) , 1)
+    Just ("MultT", val) -> do slrStateStackPush 8; return (\[] -> TokenValue val, 0)
+    Nothing -> slrReduceHelper_2 pair
+    Just ("PlusT", _) -> slrReduceHelper_2 pair
+    Just ("RBraceT", _) -> slrReduceHelper_2 pair
+
+slrReduceHelper_2 pair = do 
+  restoreTokenStack pair
+  slrStateStackPop
+  slrTokenStackPush ("E", "UNDEFINED")
+  return (\[t0] -> NontermValue1 $ (getNValue4 t0) , 1)
 
 
 slrUnit_3 = do
   pair <- slrTokenStackPop
-  yield 3 
+
   case pair of
-    Just ("E", val) -> do slrStateStackPush 7; return (\[] -> TokenValue val, -1)
-    Just ("LBraceT", val) -> do slrStateStackPush 3; return (\[] -> TokenValue val, 0)
-    Just ("T", val) -> do slrStateStackPush 2; return (\[] -> TokenValue val, -1)
-    Just ("VarT", val) -> do slrStateStackPush 4; return (\[] -> TokenValue val, 0)
+    Nothing -> slrReduceHelper_3 pair
+    Just ("MultT", _) -> slrReduceHelper_3 pair
+    Just ("PlusT", _) -> slrReduceHelper_3 pair
+    Just ("RBraceT", _) -> slrReduceHelper_3 pair
+
+slrReduceHelper_3 pair = do 
+  restoreTokenStack pair
+  slrStateStackPop
+  slrTokenStackPush ("T", "UNDEFINED")
+  return (\[t0] -> NontermValue4 $ (getNValue2 t0) , 1)
 
 
 slrUnit_4 = do
   pair <- slrTokenStackPop
-  yield 4 
+
   case pair of
-    _ -> do 
-      restoreTokenStack pair
-      slrStateStackPop
-      slrTokenStackPush ("T", "UNDEFINED")
-      return (\[t0] -> NontermValue3 $ Var (getTokenValue t0) , 1)
+    Just ("E", val) -> do slrStateStackPush 10; return (\[] -> TokenValue val, -1)
+    Just ("F", val) -> do slrStateStackPush 3; return (\[] -> TokenValue val, -1)
+    Just ("LBraceT", val) -> do slrStateStackPush 4; return (\[] -> TokenValue val, 0)
+    Just ("T", val) -> do slrStateStackPush 2; return (\[] -> TokenValue val, -1)
+    Just ("VarT", val) -> do slrStateStackPush 5; return (\[] -> TokenValue val, 0)
+
+
 
 
 slrUnit_5 = do
   pair <- slrTokenStackPop
-  yield 5 
+
   case pair of
-    Just ("LBraceT", val) -> do slrStateStackPush 3; return (\[] -> TokenValue val, 0)
-    Just ("T", val) -> do slrStateStackPush 6; return (\[] -> TokenValue val, -1)
-    Just ("VarT", val) -> do slrStateStackPush 4; return (\[] -> TokenValue val, 0)
+    Nothing -> slrReduceHelper_5 pair
+    Just ("MultT", _) -> slrReduceHelper_5 pair
+    Just ("PlusT", _) -> slrReduceHelper_5 pair
+    Just ("RBraceT", _) -> slrReduceHelper_5 pair
+
+slrReduceHelper_5 pair = do 
+  restoreTokenStack pair
+  slrStateStackPop
+  slrTokenStackPush ("F", "UNDEFINED")
+  return (\[t0] -> NontermValue2 $ Var (getTokenValue t0) , 1)
 
 
 slrUnit_6 = do
   pair <- slrTokenStackPop
-  yield 6 
+
   case pair of
-    _ -> do 
-      restoreTokenStack pair
-      slrStateStackPop
-      slrStateStackPop
-      slrStateStackPop
-      slrTokenStackPush ("E", "UNDEFINED")
-      return (\[t2, t1, t0] -> NontermValue1 $ Add (getNValue1 t0) (getNValue3 t2) , 3)
+    Just ("F", val) -> do slrStateStackPush 3; return (\[] -> TokenValue val, -1)
+    Just ("LBraceT", val) -> do slrStateStackPush 4; return (\[] -> TokenValue val, 0)
+    Just ("T", val) -> do slrStateStackPush 7; return (\[] -> TokenValue val, -1)
+    Just ("VarT", val) -> do slrStateStackPush 5; return (\[] -> TokenValue val, 0)
+
+
 
 
 slrUnit_7 = do
   pair <- slrTokenStackPop
-  yield 7 
+
   case pair of
-    Just ("PlusT", val) -> do slrStateStackPush 5; return (\[] -> TokenValue val, 0)
-    Just ("RBraceT", val) -> do slrStateStackPush 8; return (\[] -> TokenValue val, 0)
+    Just ("MultT", val) -> do slrStateStackPush 8; return (\[] -> TokenValue val, 0)
+    Nothing -> slrReduceHelper_7 pair
+    Just ("PlusT", _) -> slrReduceHelper_7 pair
+    Just ("RBraceT", _) -> slrReduceHelper_7 pair
+
+slrReduceHelper_7 pair = do 
+  restoreTokenStack pair
+  slrStateStackPop
+  slrStateStackPop
+  slrStateStackPop
+  slrTokenStackPush ("E", "UNDEFINED")
+  return (\[t2, t1, t0] -> NontermValue1 $ Add (getNValue1 t0) (getNValue4 t2) , 3)
 
 
 slrUnit_8 = do
   pair <- slrTokenStackPop
-  yield 8 
+
   case pair of
-    _ -> do 
-      restoreTokenStack pair
-      slrStateStackPop
-      slrStateStackPop
-      slrStateStackPop
-      slrTokenStackPush ("T", "UNDEFINED")
-      return (\[t2, t1, t0] -> NontermValue3 $ (getNValue1 t1) , 3)
+    Just ("F", val) -> do slrStateStackPush 9; return (\[] -> TokenValue val, -1)
+    Just ("LBraceT", val) -> do slrStateStackPush 4; return (\[] -> TokenValue val, 0)
+    Just ("VarT", val) -> do slrStateStackPush 5; return (\[] -> TokenValue val, 0)
+
+
+
+
+slrUnit_9 = do
+  pair <- slrTokenStackPop
+
+  case pair of
+    Nothing -> slrReduceHelper_9 pair
+    Just ("MultT", _) -> slrReduceHelper_9 pair
+    Just ("PlusT", _) -> slrReduceHelper_9 pair
+    Just ("RBraceT", _) -> slrReduceHelper_9 pair
+
+slrReduceHelper_9 pair = do 
+  restoreTokenStack pair
+  slrStateStackPop
+  slrStateStackPop
+  slrStateStackPop
+  slrTokenStackPush ("T", "UNDEFINED")
+  return (\[t2, t1, t0] -> NontermValue4 $ Mult (getNValue4 t0) (getNValue2 t2) , 3)
+
+
+slrUnit_10 = do
+  pair <- slrTokenStackPop
+
+  case pair of
+    Just ("PlusT", val) -> do slrStateStackPush 6; return (\[] -> TokenValue val, 0)
+    Just ("RBraceT", val) -> do slrStateStackPush 11; return (\[] -> TokenValue val, 0)
+
+
+
+
+slrUnit_11 = do
+  pair <- slrTokenStackPop
+
+  case pair of
+    Nothing -> slrReduceHelper_11 pair
+    Just ("MultT", _) -> slrReduceHelper_11 pair
+    Just ("PlusT", _) -> slrReduceHelper_11 pair
+    Just ("RBraceT", _) -> slrReduceHelper_11 pair
+
+slrReduceHelper_11 pair = do 
+  restoreTokenStack pair
+  slrStateStackPop
+  slrStateStackPop
+  slrStateStackPop
+  slrTokenStackPush ("F", "UNDEFINED")
+  return (\[t2, t1, t0] -> NontermValue2 $ (getNValue1 t1) , 3)
+

@@ -1,5 +1,5 @@
 module Grammar where 
 
 
-data Expr = Var String | Add Expr Expr deriving Show
+data Expr = Var String | Add Expr Expr | Mult Expr Expr deriving Show
 
