@@ -410,6 +410,7 @@ renderReducingBody attributes helperName nonterminals nonterminalName (grammar, 
   let len = List.length $ grammar
       arguments = "[" ++ (intercalate ", " $ (\i -> "t" ++ show (len - 1 - i)) <$> [0..len-1]) ++ "]"
       mainIndex = fromJust $ findIndexList nonterminals nonterminalName in
+  helperName ++ " :: Maybe (String, String) -> SLRState _\n" ++
   helperName ++ " pair = do \n" ++ 
   "  restoreTokenStack pair\n" ++
   generateStackReduce len ++ 
@@ -475,7 +476,7 @@ slrTokenStackPopDefinition :: String
 slrTokenStackPopDefinition = unlines [
   "slrTokenStackPop = do"
  ,"  stack <- snd <$> get"
- ,"  if null stack then do"
+ ,"  if Prelude.null stack then do"
  ,"    return Nothing"
  ,"  else do"
  ,"    let hd = head stack"
@@ -498,7 +499,7 @@ slrDispatcherDefinition maxStates = unlines $
     "  lastState <- slrStateStackPeek",
     "  (producer, numToPop) <- case lastState of"] 
   ++ ((\i -> "    " ++ show i ++ " -> slrUnit_" ++ show i) <$> [0..maxStates-1])
-  ++ ["  let (top, tail) = splitAt numToPop valueStack",
+  ++ ["  let (top, tail) = Prelude.splitAt numToPop valueStack",
       "  if numToPop == -1 then slrDispatcher valueStack else do",
       "    let newValue = (producer top)",
       "    if isSuccess newValue then return valueStack else slrDispatcher (newValue : tail)"]

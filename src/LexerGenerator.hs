@@ -19,7 +19,7 @@ generateSingleLexer (Terminal name regex) = unlines
    "  let regex = mkRegex " ++ show (unwrapRegex regex),
    "      splitted = splitRegex regex s in",
    "  case splitted of",
-   "    [a, b] -> Just (" ++ show name ++ ", take (length s - length b) s, b)",
+   "    [a, b] -> Just (" ++ show name ++ ", Prelude.take (length s - length b) s, b)",
    "    _ -> Nothing"]
 
 

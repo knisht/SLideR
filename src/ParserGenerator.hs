@@ -11,11 +11,24 @@ import LexerGenerator
 
 str = "%module Sample"
 
-parseFile :: IO ()
-parseFile = do
-  file <- readFile "src/SourceGrammar.slr"
+exec :: String -> IO ()
+exec s = do
+  content <- runProgram s
+  let newFilename = (take (length s - 4) s) ++ ".hs"
+  writeFile newFilename content
+
+
+runProgram :: String -> IO String
+runProgram filename = do
+  file <- readFile filename
   let (File parsed) = parseSLRFile $ TemplateLexer.alexScanTokens file
   let content = processStatements parsed
+  return content
+
+
+parseFile :: IO ()
+parseFile = do
+  content <- runProgram "src/SourceGrammar.slr"
   putStrLn content
 
 processStatements :: [Statement] -> String
@@ -41,7 +54,6 @@ preimports = unlines ["{-# LANGUAGE PartialTypeSignatures #-}",
             "import System.IO.Unsafe",
             "import Control.Applicative",
             "import Text.Regex",
-            "import Debug",
             "\n\n\n",
             "type SLRState = State ([Int], [(String, String)])"]
 

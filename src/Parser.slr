@@ -1,0 +1,38 @@
+%module Parser
+
+%tokens
+_           " |\n"
+PLUS        "\+"
+MULT        "\*"
+MINUS       "\-"
+DIV         "\\"
+VAR         "[a-z]+"
+EQ          "="
+NUM         "[0-9]+"
+SEMICOLON   ";"
+LBRACE      "\("
+RBRACE      "\)"
+
+%attributes
+computation
+
+%grammar
+StatementList -> Statement               [computation = {execState $0.computation Map.empty}]
+               | StatementList Statement [computation = {execState $1.computation $0}]
+
+Statement -> VAR EQ Expr SEMICOLON    [computation = {$2.computation >>= (\a -> modify (Map.insert $0 a)) }]
+
+Expr -> Expr PLUS Term                   [computation = {liftM2 (+) $0.computation $2.computation}]
+      | Expr MINUS Term                  [computation = {liftM2 (-) $0.computation $2.computation}]
+      | Term                             [computation = {$0.computation}]
+
+Term -> Term MULT Factor                 [computation = {liftM2 (*) $0.computation $2.computation}]
+      | Term DIV  Factor              [computation = {liftM2 (div) $0.computation $2.computation}]
+      | Factor                           [computation = {$0.computation}]
+
+Factor -> NUM                            [computation = {return ((read $0) :: Int)}]
+        | VAR                            [computation = { (flip (Map.!) $0) <$> get}]
+        | LBRACE Expr RBRACE             [computation = { $1.computation }]
+
+
+

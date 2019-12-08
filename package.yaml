@@ -9,7 +9,6 @@ copyright:           "2019 Author name here"
 extra-source-files:
 - README.md
 - ChangeLog.md
-- src/TempLexer.x
 - src/TemplateLexer.x
 - src/TemplateParser.y
 
@@ -37,6 +36,8 @@ dependencies:
 - mtl >= 2.0 && < 2.3
 - containers >= 0.6 && < 0.7
 - Cabal >= 2.4
+- regex-compat >= 0.95
+
 library:
   source-dirs: src
 
