@@ -1,6 +1,5 @@
 %module SampleGrammar 
 
-%import Grammar
 
 %tokens 
 _         " |\n"
@@ -16,14 +15,14 @@ repr
 
 
 %grammar
-E -> E PlusT T          [value = {$0.value + $2.value}, repr = {$0.repr}]   
-   | T                  [value = {$0.value}, repr = {$0.repr}]              
+E -> E PlusT T          [value = {$0.value + $2.value}, repr = {1}]   
+   | T                  [value = {$0.value}, repr = {1}]              
 
-T -> T MultT F          [value = {$0.value * $2.value}, repr = {$0.repr}]   
-   | F                  [value = {$0.value}, repr = {$0.repr}]                      
+T -> T MultT F          [value = {$0.value * $2.value}, repr = {1}]   
+   | F                  [value = {$0.value}, repr = {1}]                      
 
-F -> LBraceT E RBraceT  [value = {$1.value}, repr = {$1.repr}]      
-   | VarT               [value = {(read $0) :: Int}, repr = {$0}]           
+F -> LBraceT E RBraceT  [value = {$1.value}]      
+   | VarT               [value = {(read $0) :: Int}]           
 
 
 

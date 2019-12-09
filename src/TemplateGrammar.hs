@@ -4,7 +4,7 @@ module TemplateGrammar where
 data File = File [Statement] deriving Show
 
 data Statement = ModuleStatement  String 
-               | ImportStatement  String
+               | InlineStatement  String
                | TokensStatement  [Terminal]
                | GrammarStatement [RuleDefinition]
                | AttributesStatement [String]

@@ -10,7 +10,7 @@ $alpha      = [a-zA-Z]
 tokens :-
     $white+                             ;
     "%module"                           { \_ -> ModuleDirectiveT }
-    "%import"                           { \_ -> ImportDirectiveT }
+    "%inline"                           { \_ -> InlineDirectiveT }
     "%tokens"                           { \_ -> TokensDirectiveT }
     "%grammar"                          { \_ -> GrammarDirectiveT }
     "%attributes"                       { \_ -> AttributesDirectiveT }
@@ -26,7 +26,7 @@ tokens :-
 {
 
 data Token = ModuleDirectiveT 
-           | ImportDirectiveT
+           | InlineDirectiveT
            | TokensDirectiveT
            | GrammarDirectiveT 
            | AttributesDirectiveT

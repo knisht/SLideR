@@ -4,56 +4,55 @@ import TempLexer as TempLexer
 import TemplateParser as TemplateParser
 import TemplateLexer as TemplateLexer
 import Data.Maybe
+import Data.Bifunctor 
 import TemplateGrammar
 import DFA
 import Control.Monad
 import LexerGenerator
 
-str = "%module Sample"
 
 exec :: String -> IO ()
-exec s = do
-  content <- runProgram s
-  let newFilename = (take (length s - 4) s) ++ ".hs"
-  writeFile newFilename content
+exec filename = do
+  (content, newFilename) <- runProgram filename
+  writeFile (newFilename ++ ".hs") content
 
 
-runProgram :: String -> IO String
+runProgram :: String -> IO (String, String)
 runProgram filename = do
   file <- readFile filename
   let (File parsed) = parseSLRFile $ TemplateLexer.alexScanTokens file
-  let content = processStatements parsed
-  return content
+  let (content, modulename) = processStatements parsed
+  return (content, modulename)
 
 
 parseFile :: IO ()
 parseFile = do
   content <- runProgram "src/SourceGrammar.slr"
-  putStrLn content
+  putStrLn $ fst content
 
-processStatements :: [Statement] -> String
+processStatements :: [Statement] -> (String, String)
 processStatements list = 
   let moduleStatement = extractModuleStatement list
-      importStatements = extractImportStatements list
+      inlineStatements = extractInlineStatements list
       tokensStatement = extractTokensStatement list
       grammarStatement = extractGrammarStatements list
       attributes = extractAttributes list
       properTokens = extractProperTokens tokensStatement
-      header = generateModuleHeader moduleStatement
-      imports = generateImportHeader importStatements >>= (++"\n")
+      (header, modulename) = generateModuleHeader moduleStatement
+      inlines = generateInlineCode inlineStatements >>= (++"\n")
       properGrammar = extractProperGrammar grammarStatement
       lexer = generateLexer properTokens
       body = buildDFA attributes properGrammar 
-  in header ++ "\n\n\n" ++ imports ++ preimports ++ "\n\n\n" ++ lexer ++ "\n\n\n" ++ body
+  in (header ++ "\n\n\n" ++ inlines ++ preimports ++ "\n\n\n" ++ lexer ++ "\n\n\n" ++ body, modulename)
 
 
 preimports :: String
-preimports = unlines ["{-# LANGUAGE PartialTypeSignatures #-}",
+preimports = unlines [
             "import Control.Monad.State.Strict",
             "import Data.Bifunctor",
             "import System.IO.Unsafe",
             "import Control.Applicative",
-            "import Text.Regex",
+            "import Text.Regex.PCRE",
             "\n\n\n",
             "type SLRState = State ([Int], [(String, String)])"]
 
@@ -62,9 +61,9 @@ extractModuleStatement = mapMaybe (\s -> case s of
   ModuleStatement _ -> Just s
   _ -> Nothing)  
 
-extractImportStatements :: [Statement] -> [Statement]
-extractImportStatements = mapMaybe (\s -> case s of
-  ImportStatement _ -> Just s
+extractInlineStatements :: [Statement] -> [Statement]
+extractInlineStatements = mapMaybe (\s -> case s of
+  InlineStatement _ -> Just s
   _ -> Nothing)
 
 extractTokensStatement :: [Statement] -> [Statement]
@@ -85,13 +84,14 @@ extractProperTokens = join . fmap (\(TokensStatement s) -> s)
 extractProperGrammar :: [Statement] -> [RuleDefinition]
 extractProperGrammar = join . fmap (\(GrammarStatement s) -> s)
 
-generateModuleHeader :: [Statement] -> String
-generateModuleHeader list = case list of
-  [ModuleStatement header] -> "module " ++ header ++ " where"
+generateModuleHeader :: [Statement] -> (String, String)
+generateModuleHeader list = bimap ("{-# LANGUAGE PartialTypeSignatures #-}\n"++) id $
+   case list of
+    [ModuleStatement header] -> ("module " ++ header ++ " where", header)
 
 
-generateImportHeader :: [Statement] -> [String]
-generateImportHeader = fmap (\(ImportStatement s) -> "import " ++ s)
+generateInlineCode :: [Statement] -> [String]
+generateInlineCode = fmap (\(InlineStatement s) -> tail $ take (length s - 1) s)
 
 
 extractAttributes :: [Statement] -> [String]

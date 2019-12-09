@@ -9,7 +9,7 @@ import Data.Set as Set
 import Control.Monad.State.Strict
 import Data.Map.Strict as Map
 import Data.Maybe
-import Text.Regex
+import Text.Regex.PCRE
 import Data.Bifunctor
 import Data.List as List
 import Data.Maybe as Maybe
@@ -418,31 +418,44 @@ renderReducingBody attributes helperName nonterminals nonterminalName (grammar, 
   "\n  return (\\" ++ arguments ++ " -> NontermValue" ++ show mainIndex ++ " (" ++ createCode attributes code grammar nonterminals ++ "), " ++ show len ++ ")"
 
 
+
 createCode :: Attributes -> [Assign] -> [String] -> [String] -> String
 createCode attributes assigns grammar nonterminals = 
-  let codes = (\a -> createSingleCode attributes a grammar nonterminals) <$> assigns
-      numbers = (\(Assign name _) -> findIndexList attributes name) <$> assigns
+  let assignedVariables = (\(Assign a _) -> a) <$> assigns
+      missingCodes = List.filter (isNothing . findIndexList assignedVariables) attributes 
+      emptyCodes = (\s -> Assign s "{()}") <$> missingCodes
+      properAssigns = assigns ++ emptyCodes
+      codes = (\a-> createSingleCode attributes a grammar nonterminals) <$> properAssigns
+      numbers = (\(Assign name _) -> findIndexList attributes name) <$> properAssigns
       zipped = zip codes numbers
       sorted = fst <$> sortOn snd zipped in
   "(" ++ intercalate ", " sorted ++ ")"
 
 
+subRegex :: String -> String -> String -> String
+subRegex regex text toReplace = case ((text =~~ regex) :: Maybe (String, String, String, [String])) of
+  Nothing -> text
+  Just a -> subRegex regex (subRegexHelper a toReplace) toReplace
+
+subRegexHelper :: (String, String, String, [String]) -> String -> String
+subRegexHelper (before, match, after, _) toReplace = before ++ toReplace ++ after
+
 createSingleCode :: Attributes -> Assign -> [String] -> [String] -> String
 createSingleCode attributes (Assign _ code) grammar nonterminals =
-  let regexProducer i = mkRegex $ "\\$" ++ show i ++ "\\.(\\w+)?\\b"
+  let regexProducer i = "\\$" ++ show i ++ "\\.(\\w+)?\\b"
       substProducer i = "(" ++ renderGetter i grammar nonterminals ++ " t" ++ show i ++ ")"
       substs = join $ (\i -> generateSubstitutors i attributes grammar nonterminals) <$> [0..length grammar -1] 
       trueCode = tail $ List.take (length code - 1) code in
   List.foldr (\(regex, subst) str -> subRegex regex str subst) trueCode substs
 
 
-generateSubstitutors :: Int -> Attributes -> [String] -> [String] -> [(Regex, String)]
+generateSubstitutors :: Int -> Attributes -> [String] -> [String] -> [(String, String)]
 generateSubstitutors ind attributes grammar nonterminals =
   let typeGetter = "(" ++ renderGetter ind grammar nonterminals ++ " t" ++ show ind ++ ")"
       valueGetter s = "(getAttr_" ++ s ++ " " ++ typeGetter ++ ")" 
       regexBase = "\\$" ++ show ind in
-  (mkRegex $ "\\$" ++ show ind, typeGetter) : 
-  ((\s -> (mkRegex $ regexBase ++ "\\." ++ s, valueGetter s)) <$> attributes)       
+  ("\\$" ++ show ind, typeGetter) : 
+  ((\s -> (regexBase ++ "\\." ++ s, valueGetter s)) <$> attributes)       
 
 
 renderGetter :: Int -> [String] -> [String] -> String

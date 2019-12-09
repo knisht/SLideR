@@ -9,18 +9,23 @@ generateLexer :: [Terminal] -> String
 generateLexer terminals = intercalate "\n\n" $ 
   generateLexingAnalyzer : 
   generateCompositeLexer terminals :
+  generateGenericLexer : 
   (generateSingleLexer <$> terminals)
+
+
+generateGenericLexer :: String
+generateGenericLexer = unlines [
+ "runLex :: String -> String -> String -> Maybe (String, String, String)",
+ "runLex regex name s = let splitted = ((s =~~ regex) :: Maybe (String, String, String, [String]))   in",
+ "   case splitted of",
+ "     Just (\"\", matched, after, _) -> Just (name, matched, after)",
+ "     _ -> Nothing"]
 
 
 generateSingleLexer :: Terminal -> String
 generateSingleLexer (Terminal name regex) = unlines 
   ["lex" ++ name ++ " :: String -> Maybe (String, String, String)",
-   "lex" ++ name ++ " s = ",
-   "  let regex = mkRegex " ++ show (unwrapRegex regex),
-   "      splitted = splitRegex regex s in",
-   "  case splitted of",
-   "    [a, b] -> Just (" ++ show name ++ ", Prelude.take (length s - length b) s, b)",
-   "    _ -> Nothing"]
+   "lex" ++ name ++ " = runLex " ++ show (unwrapRegex regex) ++ " " ++ show name]
 
 
 generateCompositeLexer :: [Terminal] -> String

@@ -12,7 +12,7 @@ import TemplateGrammar
 
 %token
     MODULEDIR   { ModuleDirectiveT  }
-    IMPORTDIR   { ImportDirectiveT  }
+    INLINEDIR   { InlineDirectiveT  }
     TOKENSDIR   { TokensDirectiveT  }
     GRAMMARDIR  { GrammarDirectiveT }
     ATTRIBUTESDIR { AttributesDirectiveT }
@@ -38,7 +38,7 @@ StatementList
 
 Statement 
     : MODULEDIR IDENTIFIER   { ModuleStatement $2 }
-    | IMPORTDIR IDENTIFIER   { ImportStatement $2 }
+    | INLINEDIR CODEBLOCK    { InlineStatement $2 }
     | TOKENSDIR TerminalList { TokensStatement $2 }
     | GRAMMARDIR GrammarList { GrammarStatement $2}
     | ATTRIBUTESDIR AttributesList { AttributesStatement $2}
