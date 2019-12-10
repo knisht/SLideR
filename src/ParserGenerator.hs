@@ -1,6 +1,5 @@
 module ParserGenerator where
 
-import TempLexer as TempLexer
 import TemplateParser as TemplateParser
 import TemplateLexer as TemplateLexer
 import Data.Maybe

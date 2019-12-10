@@ -22,7 +22,7 @@ tokens :-
     \]                                  { \_ -> AttrRBraceT }
     =                                   { \_ -> EqSignT }
     \{ ([^\}]+) \}                      { \s -> CodeBlockT s}
-    \"(.+)\"\n                         { \s -> RegexT s }
+    \"(.+)\"\n                          { \s -> RegexT s }
 {
 
 data Token = ModuleDirectiveT 

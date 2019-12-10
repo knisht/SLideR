@@ -1,0 +1,35 @@
+%module Parser 
+
+
+%tokens 
+_         " |\n"
+NumT      "\-?[0-9]+"
+PlusT     "\+"
+MultT     "\*"
+MinusT    "\-"
+DivT      "\/"
+LBraceT   "\("
+PowT      "\^"
+RBraceT   "\)"
+
+%attributes
+value
+
+
+%grammar
+E -> E PlusT T          [value = {$0.value + $2.value}]   
+   | E MinusT T         [value = {$0.value - $2.value}]
+   | T                  [value = {$0.value}]              
+
+T -> T MultT P          [value = {$0.value * $2.value}]   
+   | T DivT P           [value = {$0.value `div` $2.value}]
+   | P                  [value = {$0.value}]                      
+
+P -> F PowT P           [value = {$0.value ^ $2.value}]       
+   | F                  [value = {$0.value}]
+
+F -> LBraceT E RBraceT  [value = {$1.value}]      
+   | NumT               [value = {(read $0) :: Int}]           
+
+
+

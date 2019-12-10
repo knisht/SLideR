@@ -12,10 +12,6 @@ extra-source-files:
 - src/TemplateLexer.x
 - src/TemplateParser.y
 
-other-modules:
-- TempLexer
-- TemplateLexer
-- TemplateParser
 
 build-tools:
 - alex
@@ -36,7 +32,7 @@ dependencies:
 - mtl >= 2.0 && < 2.3
 - containers >= 0.6 && < 0.7
 - Cabal >= 2.4
-- regex-compat >= 0.95
+- regex-pcre >= 0.94
 
 library:
   source-dirs: src

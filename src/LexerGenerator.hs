@@ -37,7 +37,7 @@ generateLexingAnalyzer :: String
 generateLexingAnalyzer = unlines
   ["slrLexer :: String -> [(String, String)]",
    "slrLexer s = case compositeLexer s of",
-   "  Nothing -> []",
+   "  Nothing -> if (Prelude.null s) then [] else undefined",
    "  Just (name, parsed, remained) -> if name == \"_\" then slrLexer remained else (name, parsed) : slrLexer remained"]
 
 
